@@ -1,0 +1,88 @@
+version: "3.8"
+services:
+  domain-controller:
+    image: quay.io/wildfly/wildfly:23.0.2.Final
+    container_name: domain-controller
+    volumes:
+      - ./configs/dc/host-master.xml:/opt/jboss/wildfly/domain/configuration/host-master.xml
+      - ./configs/dc/domain.xml:/opt/jboss/wildfly/domain/configuration/domain.xml
+    command: ["/bin/sh", "-c", "/opt/jboss/wildfly/bin/add-user.sh -u admin -p secret --silent && /opt/jboss/wildfly/bin/domain.sh --host-config=host-master.xml"]
+    environment:
+      - JBOSS_BIND_ADDRESS=0.0.0.0
+      - JBOSS_BIND_ADDRESS_MANAGEMENT=0.0.0.0
+      - LAUNCH_JBOSS_IN_BACKGROUND=true
+      - JAVA_OPTS=-server -Xms64m -Xmx512m -Djava.net.preferIPv4Stack=true -Djboss.as.management.blocking.timeout=3000 -Djboss.socket.binding.port-offset=0
+    ports:
+      - "9990:9990" # Admin console
+      - "9999:9999" # Management native interface
+    networks:
+      - wildfly-net
+
+  backend1:
+    image: quay.io/wildfly/wildfly:23.0.2.Final
+    container_name: backend1
+    volumes:
+      - ./configs/backend1/host-slave.xml:/opt/jboss/wildfly/domain/configuration/host.xml
+    command: ["/bin/sh", "-c", "/opt/jboss/wildfly/bin/add-user.sh -u admin -p secret --silent && sleep 5 && /opt/jboss/wildfly/bin/domain.sh"]
+    environment:
+      - JBOSS_BIND_ADDRESS=0.0.0.0
+      - JBOSS_BIND_ADDRESS_MANAGEMENT=0.0.0.0
+      - JBOSS_DOMAIN_MASTER_ADDRESS=domain-controller
+      - LAUNCH_JBOSS_IN_BACKGROUND=true
+      - WILDFLY_PROCESS_TIMEOUT=120
+      - WILDFLY_DEFAULT_ACCEPT_TIMEOUT=60000
+      - jboss.domain.master.address=domain-controller
+      - JAVA_OPTS=-server -Xms64m -Xmx256m -Djava.net.preferIPv4Stack=true -Djboss.as.management.blocking.timeout=60000 -Djboss.domain.connection.timeout=60000 -Djboss.as.process.timeout=60
+    ports:
+      - "9081:8080" # HTTP
+      - "10003:9990" # Management interface
+      - "10002:9999" # Management native interface
+    depends_on:
+      - domain-controller
+    networks:
+      - wildfly-net
+
+  backend2:
+    image: quay.io/wildfly/wildfly:23.0.2.Final
+    container_name: backend2
+    volumes:
+      - ./configs/backend2/host-slave.xml:/opt/jboss/wildfly/domain/configuration/host.xml
+    command: ["/bin/sh", "-c", "/opt/jboss/wildfly/bin/add-user.sh -u admin -p secret --silent && sleep 5 && /opt/jboss/wildfly/bin/domain.sh"]
+    environment:
+      - JBOSS_BIND_ADDRESS=0.0.0.0
+      - JBOSS_BIND_ADDRESS_MANAGEMENT=0.0.0.0
+      - JBOSS_DOMAIN_MASTER_ADDRESS=domain-controller
+      - LAUNCH_JBOSS_IN_BACKGROUND=true
+      - WILDFLY_PROCESS_TIMEOUT=120
+      - WILDFLY_DEFAULT_ACCEPT_TIMEOUT=60000
+      - jboss.domain.master.address=domain-controller
+      - JAVA_OPTS=-server -Xms64m -Xmx256m -Djava.net.preferIPv4Stack=true -Djboss.as.management.blocking.timeout=60000 -Djboss.domain.connection.timeout=60000 -Djboss.as.process.timeout=60
+    ports:
+      - "9080:8080" # HTTP
+      - "9991:9990" # Management interface
+      - "9992:9999" # Management native interface
+    depends_on:
+      - domain-controller
+    networks:
+      - wildfly-net
+
+  lb:
+    image: quay.io/wildfly/wildfly:28.0.1.Final-jdk17
+    container_name: wildfly-lb
+    ports:
+      - "9980:8080" # HTTP
+      - "6666:6666" # mod_cluster management
+      - "10001:9990" # Management interface
+    volumes:
+      - ./configs/lb/standalone-load-balancer.xml:/opt/jboss/wildfly/standalone/configuration/standalone-load-balancer.xml
+    command: ["/opt/jboss/wildfly/bin/standalone.sh", "-c", "standalone-load-balancer.xml"]
+    environment:
+      - JBOSS_BIND_ADDRESS=0.0.0.0
+      - JBOSS_BIND_ADDRESS_MANAGEMENT=0.0.0.0
+      - LAUNCH_JBOSS_IN_BACKGROUND=true
+    networks:
+      - wildfly-net
+
+networks:
+  wildfly-net:
+    driver: bridge
