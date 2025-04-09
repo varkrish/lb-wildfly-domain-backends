@@ -94,9 +94,19 @@
         <http-listener name="default" socket-binding="undertow" enable-http2="true"/>
         <!-- <https-listener name="https" socket-binding="https"  enable-http2="true"/> -->
         <host name="default-host" alias="localhost">
-            <location name="/" handler="welcome-content"/>
+            <location name="/" handler="lb-handler"/>
         </host>
     </server>
+        <handlers>
+        <reverse-proxy name="lb-handler" 
+                      problem-server-retry="30" 
+                      session-cookie-names="JSESSIONID"
+                      connections-per-thread="20">
+            <!-- Add both backends here to load balance between them -->
+            <host name="backend1" instance-id="backend1" path="/" scheme="http" outbound-socket-binding="backend1"/>
+            <host name="backend2" instance-id="backend2" path="/" scheme="http" outbound-socket-binding="backend2"/>
+        </reverse-proxy>
+    </handlers>
     <servlet-container name="default">
         <jsp-config/>
         <websockets/>
@@ -151,12 +161,17 @@
             <socket-binding name="management-https" interface="management" port="${jboss.management.https.port:9993}"/>
             <socket-binding name="ajp" port="${jboss.ajp.port:8009}"/>
             <socket-binding name="http" port="${jboss.http.port:8080}"/>
-                        <socket-binding name="undertow" port="${jboss.http.port:9999}"/>
-
+             <socket-binding name="undertow" port="9959"/>
             <socket-binding name="https" port="${jboss.https.port:8443}"/>
             <socket-binding name="txn-recovery-environment" port="4712"/>
             <socket-binding name="txn-status-manager" port="4713"/>
             <socket-binding name="modcluster" port="0" multicast-address="224.0.1.105" multicast-port="23364"/>
+           <outbound-socket-binding name="backend1">
+        <remote-destination host="dc-lb-backend1" port="9959"/>
+    </outbound-socket-binding>
+    <outbound-socket-binding name="backend2">
+        <remote-destination host="dc-lb-backend2" port="9959"/>
+    </outbound-socket-binding>
         </socket-binding-group>
     </socket-binding-groups>
     
