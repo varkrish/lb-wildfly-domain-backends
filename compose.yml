@@ -1,8 +1,9 @@
 version: "3.8"
+
 services:
-  domain-controller:
+  wildfly-dc-master:
     image: quay.io/wildfly/wildfly:23.0.2.Final
-    container_name: domain-controller
+    container_name: wildfly-dc-master
     volumes:
       - ./configs/dc/host-master.xml:/opt/jboss/wildfly/domain/configuration/host-master.xml
       - ./configs/dc/domain.xml:/opt/jboss/wildfly/domain/configuration/domain.xml
@@ -13,75 +14,78 @@ services:
       - LAUNCH_JBOSS_IN_BACKGROUND=true
       - JAVA_OPTS=-server -Xms64m -Xmx512m -Djava.net.preferIPv4Stack=true -Djboss.as.management.blocking.timeout=3000 -Djboss.socket.binding.port-offset=0
     ports:
-      - "9990:9990" # Admin console
-      - "9999:9999" # Management native interface
+      - "9990:9990"
+      - "9999:9999"
+      - "9959:9959"
     networks:
       - wildfly-net
 
-  backend1:
+  httpd-dc-lb-backend1:
     image: quay.io/wildfly/wildfly:23.0.2.Final
-    container_name: backend1
+    container_name:   httpd-dc-lb-backend1
     volumes:
       - ./configs/backend1/host-slave.xml:/opt/jboss/wildfly/domain/configuration/host.xml
     command: ["/bin/sh", "-c", "/opt/jboss/wildfly/bin/add-user.sh -u admin -p secret --silent && sleep 5 && /opt/jboss/wildfly/bin/domain.sh"]
     environment:
       - JBOSS_BIND_ADDRESS=0.0.0.0
       - JBOSS_BIND_ADDRESS_MANAGEMENT=0.0.0.0
-      - JBOSS_DOMAIN_MASTER_ADDRESS=domain-controller
+      - JBOSS_DOMAIN_MASTER_ADDRESS=wildfly-dc-master
       - LAUNCH_JBOSS_IN_BACKGROUND=true
       - WILDFLY_PROCESS_TIMEOUT=120
       - WILDFLY_DEFAULT_ACCEPT_TIMEOUT=60000
-      - jboss.domain.master.address=domain-controller
+      - jboss.domain.master.address=wildfly-dc-master
       - JAVA_OPTS=-server -Xms64m -Xmx256m -Djava.net.preferIPv4Stack=true -Djboss.as.management.blocking.timeout=60000 -Djboss.domain.connection.timeout=60000 -Djboss.as.process.timeout=60
     ports:
-      - "9081:8080" # HTTP
-      - "10003:9990" # Management interface
-      - "10002:9999" # Management native interface
+      - "9081:8080"
+      - "10003:9990"
+      - "10002:9999"
     depends_on:
-      - domain-controller
+      - wildfly-dc-master
     networks:
       - wildfly-net
 
-  backend2:
+  httpd-dc-lb-backend2:
     image: quay.io/wildfly/wildfly:23.0.2.Final
-    container_name: backend2
+    container_name: httpd-dc-lb-backend2
     volumes:
       - ./configs/backend2/host-slave.xml:/opt/jboss/wildfly/domain/configuration/host.xml
     command: ["/bin/sh", "-c", "/opt/jboss/wildfly/bin/add-user.sh -u admin -p secret --silent && sleep 5 && /opt/jboss/wildfly/bin/domain.sh"]
     environment:
       - JBOSS_BIND_ADDRESS=0.0.0.0
       - JBOSS_BIND_ADDRESS_MANAGEMENT=0.0.0.0
-      - JBOSS_DOMAIN_MASTER_ADDRESS=domain-controller
+      - JBOSS_DOMAIN_MASTER_ADDRESS=wildfly-dc-master
       - LAUNCH_JBOSS_IN_BACKGROUND=true
       - WILDFLY_PROCESS_TIMEOUT=120
       - WILDFLY_DEFAULT_ACCEPT_TIMEOUT=60000
-      - jboss.domain.master.address=domain-controller
+      - jboss.domain.master.address=wildfly-dc-master
       - JAVA_OPTS=-server -Xms64m -Xmx256m -Djava.net.preferIPv4Stack=true -Djboss.as.management.blocking.timeout=60000 -Djboss.domain.connection.timeout=60000 -Djboss.as.process.timeout=60
     ports:
-      - "9080:8080" # HTTP
-      - "9991:9990" # Management interface
-      - "9992:9999" # Management native interface
+      - "9080:8080"
+      - "9991:9990"
+      - "9992:9999"
     depends_on:
-      - domain-controller
+      - wildfly-dc-master
     networks:
       - wildfly-net
 
-  lb:
-    image: quay.io/wildfly/wildfly:28.0.1.Final-jdk17
-    container_name: wildfly-lb
+  apache-httpd-ssl:
+    build:
+      context: .
+      dockerfile: Containerfile.httpd
+    image: httpd:2.4
+    # image: apache-httpd:latest
+    container_name: apache-httpd-ssl
     ports:
-      - "9980:8080" # HTTP
-      - "6666:6666" # mod_cluster management
-      - "10001:9990" # Management interface
+      - "9700:80"
+      - "9701:8080"
     volumes:
-      - ./configs/lb/standalone-load-balancer.xml:/opt/jboss/wildfly/standalone/configuration/standalone-load-balancer.xml
-    command: ["/opt/jboss/wildfly/bin/standalone.sh", "-c", "standalone-load-balancer.xml"]
-    environment:
-      - JBOSS_BIND_ADDRESS=0.0.0.0
-      - JBOSS_BIND_ADDRESS_MANAGEMENT=0.0.0.0
-      - LAUNCH_JBOSS_IN_BACKGROUND=true
+      - ./configs/httpd/httpd.conf:/etc/httpd/conf/httpd.conf
+   #   - ./configs/httpd/certs:/etc/httpd/certs:ro
+    depends_on:
+      - httpd-dc-lb-backend1
+      - httpd-dc-lb-backend2
     networks:
-      - wildfly-net
+      - wildfly-net    
 
 networks:
   wildfly-net:
