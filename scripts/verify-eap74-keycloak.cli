@@ -1,0 +1,46 @@
+# JBoss EAP 7.4 CLI commands to verify Keycloak SAML extension
+# Run these commands in EAP CLI
+
+# 1. Connect to the domain controller
+connect
+
+# 2. Check EAP version and patches
+version
+/core-service=patching:read-resource
+
+# 3. Check if keycloak-saml extension is loaded
+/extension=org.keycloak.keycloak-saml-adapter-subsystem:read-resource
+
+# 4. List all extensions (should include keycloak)
+/:read-children-names(child-type=extension) | grep keycloak
+
+# 5. Check if keycloak-saml subsystem exists in profile
+/profile=SAN_UI_FULL/subsystem=keycloak-saml:read-resource
+
+# 6. List all secure deployments configured
+/profile=SAN_UI_FULL/subsystem=keycloak-saml:read-children-names(child-type=secure-deployment)
+
+# 7. Check elytron security domain for Keycloak
+/profile=SAN_UI_FULL/subsystem=elytron/security-domain=KeycloakDomain:read-resource
+
+# 8. Check keycloak authentication factory
+/profile=SAN_UI_FULL/subsystem=elytron/http-authentication-factory=keycloak-http-authentication:read-resource
+
+# 9. Verify keycloak realm exists
+/profile=SAN_UI_FULL/subsystem=elytron/custom-realm=KeycloakSAMLRealm:read-resource
+
+# 10. Check application security domains in undertow
+/profile=SAN_UI_FULL/subsystem=undertow/application-security-domain=KeycloakDomain:read-resource
+
+# 11. List all available mechanisms in keycloak auth factory
+/profile=SAN_UI_FULL/subsystem=elytron/http-authentication-factory=keycloak-http-authentication:read-attribute(name=mechanism-configurations)
+
+# 12. Check server group configuration
+/server-group=dsana06l_group01:read-resource
+
+# EAP 7.4 specific checks:
+# 13. Check if RH-SSO/Keycloak adapter is installed
+/subsystem=ee/global-modules:read-resource
+
+# 14. Verify module loading
+/subsystem=logging/logger=org.keycloak:read-resource
