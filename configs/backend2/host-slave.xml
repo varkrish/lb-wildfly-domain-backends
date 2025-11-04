@@ -88,10 +88,7 @@
     </jvms>
     
         <servers>
-    <server name="backend-one" group="backend-group"/>
-    <server name="backend-two" group="backend-group">
-        <socket-bindings port-offset="100"/>
-    </server>
+    <server name="backend-two" group="backend-group"/>
     </servers>
     <!-- <servers>
         <server name="server-one" group="backend-group"/>

@@ -1,0 +1,18 @@
+FROM quay.io/wildfly/wildfly:23.0.2.Final
+
+# Switch to root to install adapter
+USER root
+
+# Copy the RH-SSO adapter
+COPY rh-sso-7.6.0-saml-eap7-adapter-dist.zip /tmp/
+
+# Install the adapter
+RUN cd /opt/jboss/wildfly && \
+    unzip -o /tmp/rh-sso-7.6.0-saml-eap7-adapter-dist.zip && \
+    rm /tmp/rh-sso-7.6.0-saml-eap7-adapter-dist.zip
+
+# Switch back to jboss user
+USER jboss
+
+# Expose the necessary ports
+EXPOSE 8080 9990 9999

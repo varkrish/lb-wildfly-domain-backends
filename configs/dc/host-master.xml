@@ -42,7 +42,5 @@
 
 
     <servers>
-        <server name="backend-one" group="backend-group"/>
-        <server name="backend-two" group="backend-group"/>
     </servers>
 </host>

@@ -1,12 +1,19 @@
 version: "3.8"
 services:
   domain-controller:
-    image: quay.io/wildfly/wildfly:23.0.2.Final
+    build:
+      context: .
+      dockerfile: Dockerfile.wildfly-keycloak
     container_name: domain-controller
     volumes:
       - ./configs/dc/host-master.xml:/opt/jboss/wildfly/domain/configuration/host-master.xml
       - ./configs/dc/domain.xml:/opt/jboss/wildfly/domain/configuration/domain.xml
-    command: ["/bin/sh", "-c", "/opt/jboss/wildfly/bin/add-user.sh -u admin -p secret --silent && /opt/jboss/wildfly/bin/domain.sh --host-config=host-master.xml"]
+    command:
+      [
+        "/bin/sh",
+        "-c",
+        "/opt/jboss/wildfly/bin/add-user.sh -u admin -p secret --silent && /opt/jboss/wildfly/bin/domain.sh --host-config=host-master.xml",
+      ]
     environment:
       - JBOSS_BIND_ADDRESS=0.0.0.0
       - JBOSS_BIND_ADDRESS_MANAGEMENT=0.0.0.0
@@ -19,11 +26,18 @@ services:
       - wildfly-net
 
   backend1:
-    image: quay.io/wildfly/wildfly:23.0.2.Final
+    build:
+      context: .
+      dockerfile: Dockerfile.wildfly-keycloak
     container_name: backend1
     volumes:
       - ./configs/backend1/host-slave.xml:/opt/jboss/wildfly/domain/configuration/host.xml
-    command: ["/bin/sh", "-c", "/opt/jboss/wildfly/bin/add-user.sh -u admin -p secret --silent && sleep 5 && /opt/jboss/wildfly/bin/domain.sh"]
+    command:
+      [
+        "/bin/sh",
+        "-c",
+        "/opt/jboss/wildfly/bin/add-user.sh -u admin -p secret --silent && sleep 5 && /opt/jboss/wildfly/bin/domain.sh",
+      ]
     environment:
       - JBOSS_BIND_ADDRESS=0.0.0.0
       - JBOSS_BIND_ADDRESS_MANAGEMENT=0.0.0.0
@@ -43,11 +57,18 @@ services:
       - wildfly-net
 
   backend2:
-    image: quay.io/wildfly/wildfly:23.0.2.Final
+    build:
+      context: .
+      dockerfile: Dockerfile.wildfly-keycloak
     container_name: backend2
     volumes:
       - ./configs/backend2/host-slave.xml:/opt/jboss/wildfly/domain/configuration/host.xml
-    command: ["/bin/sh", "-c", "/opt/jboss/wildfly/bin/add-user.sh -u admin -p secret --silent && sleep 5 && /opt/jboss/wildfly/bin/domain.sh"]
+    command:
+      [
+        "/bin/sh",
+        "-c",
+        "/opt/jboss/wildfly/bin/add-user.sh -u admin -p secret --silent && sleep 5 && /opt/jboss/wildfly/bin/domain.sh",
+      ]
     environment:
       - JBOSS_BIND_ADDRESS=0.0.0.0
       - JBOSS_BIND_ADDRESS_MANAGEMENT=0.0.0.0
@@ -75,7 +96,12 @@ services:
       - "10001:9990" # Management interface
     volumes:
       - ./configs/lb/standalone-load-balancer.xml:/opt/jboss/wildfly/standalone/configuration/standalone-load-balancer.xml
-    command: ["/opt/jboss/wildfly/bin/standalone.sh", "-c", "standalone-load-balancer.xml"]
+    command:
+      [
+        "/opt/jboss/wildfly/bin/standalone.sh",
+        "-c",
+        "standalone-load-balancer.xml",
+      ]
     environment:
       - JBOSS_BIND_ADDRESS=0.0.0.0
       - JBOSS_BIND_ADDRESS_MANAGEMENT=0.0.0.0
